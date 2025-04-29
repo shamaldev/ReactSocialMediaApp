@@ -1,5 +1,5 @@
 import React from "react";
-import './UserProfile.css'
+import "./UserProfile.css";
 export default function UserProfile({ name, avatar }) {
   return (
     <div className="user-profile">

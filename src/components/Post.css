@@ -21,3 +21,33 @@
   .content {
     line-height: 1.4;
   }
+
+  .post-actions {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+  }
+
+  .like-button {
+    background: none;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    color: #555;
+    font-size: 1em;
+    transition: color 0.2s ease;
+  }
+
+  .like-button:hover {
+    color: #e44d26; /* Example hover color */
+  }
+
+  .like-button.liked {
+    color: #e44d26;
+  }
+
+  .like-count {
+    margin-left: 5px;
+  }
