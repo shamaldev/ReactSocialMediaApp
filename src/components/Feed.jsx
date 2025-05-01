@@ -1,82 +1,150 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Post from "./Post";
 import "./Feed.css";
-const initialPosts = [
-  {
-    id: 1,
-    user: { name: "Alice", avatar: "https://picsum.photos/id/1/100" },
-    timestamp: new Date(Date.now() - 3600000), // 1 hour ago
-    content: "Enjoying a sunny afternoon!",
-    likes: 0,
-    likedBy: [],
-  },
-  {
-    id: 2,
-    user: { name: "Bob", avatar: "https://picsum.photos/id/1/100" },
-    timestamp: new Date(Date.now() - 7200000), // 2 hours ago
-    content: "Just finished reading a great book.",
-    likes: 0,
-    likedBy: [],
-  },
-  {
-    id: 3,
-    user: { name: "Charlie", avatar: "https://picsum.photos/id/1/100" },
-    timestamp: new Date(Date.now() - 10800000), // 3 hours ago
-    content: "Coding is fun!",
-    likes: 0,
-    likedBy: [],
-  },
-];
+import axios from "axios";
+// const initialPosts = [
+//   {
+//     id: 1,
+//     user: { name: "Alice", avatar: "https://picsum.photos/id/1/100" },
+//     timestamp: new Date(Date.now() - 3600000), // 1 hour ago
+//     content: "Enjoying a sunny afternoon!",
+//     likes: 0,
+//     likedBy: [],
+//     comments: [
+//       {
+//         id: "c1",
+//         user: { name: "Bob" },
+//         content: "Nice!",
+//         timestamp: Date.now() - 60000,
+//       },
+//     ],
+//   },
+//   {
+//     id: 2,
+//     user: { name: "Bob", avatar: "https://picsum.photos/id/1/100" },
+//     timestamp: new Date(Date.now() - 7200000), // 2 hours ago
+//     content: "Just finished reading a great book.",
+//     likes: 0,
+//     likedBy: [],
+//     comments: [],
+//   },
+//   {
+//     id: 3,
+//     user: { name: "Charlie", avatar: "https://picsum.photos/id/1/100" },
+//     timestamp: new Date(Date.now() - 10800000), // 3 hours ago
+//     content: "Coding is fun!",
+//     likes: 0,
+//     likedBy: [],
+//     comments: [],
+//   },
+// ];
 
-export default function Feed() {
-  const [posts, setPosts] = useState(initialPosts);
+export default function Feed({ currentUser }) {
+  const [posts, setPosts] = useState([]);
   const [newContent, setNewContent] = useState("");
-  const currentUser = {
-    id: 7,
-    name: "User",
-    avatar: "https://picsum.photos/id/49/100",
-  };
+//   let nextCommentId = useRef(100);
+  const authToken = localStorage.getItem("authToken");
+  useEffect(() => {
+    const fetchPosts = async () => {
+      if (authToken) {
+        try {
+          const response = await axios.get("http://localhost:5000/api/posts", {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          });
+          setPosts(response.data);
+        } catch (error) {
+          console.error("Error fetching posts:", error);
+        }
+      }
+    };
+    fetchPosts();
+  }, [authToken]);
+
   function handleInputChange(event) {
     setNewContent(event.target.value);
   }
 
-  function handleSubmitForm(event) {
+  async function handleSubmitForm(event) {
     event.preventDefault();
-    if (newContent.trim()) {
-      const newPost = {
-        id: Date.now(),
-        user: currentUser,
-        timestamp: new Date(),
-        content: newContent,
-        likes: 0,
-        likedBy: [],
-      };
-      setPosts([...posts, newPost]);
+    if (newContent.trim() && currentUser) {
+      try {
+        const response = await axios.post(
+          "http://localhost:5000/api/posts",
+          { content: newContent },
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          }
+        );
+        setPosts([...posts, response.data]);
+        setNewContent("");
+      } catch (error) {
+        console.error("Error creating post:", error);
+      }
     }
   }
 
-  function handleLike(postId) {
-    setPosts((prevPosts) =>
-      prevPosts.map((post) => {
-        if (post.id === postId) {
-          if (post.likedBy.includes(currentUser.id)) {
-            return {
-              ...post,
-              likes: post.likes - 1,
-              likedBy: post.likedBy.filter((id) => id !== currentUser.id),
-            };
-          } else {
-            return {
-              ...post,
-              likes: post.likes + 1,
-              likedBy: [...post.likedBy, currentUser.id],
-            };
-          }
+ async function handleLike(postId) {
+    if (authToken) {
+        try {
+            const response = await axios.put(`http://localhost:5000/api/posts/${postId}/like`,{}, {
+                headers: {
+                  Authorization: `Bearer ${authToken}`,
+                },
+              })
+              setPosts(prevPosts=>
+                prevPosts.map(post=>post._id === postId ? response.data:post)
+              )
+        } catch (error) {
+            console.error('Error liking post:', error);
         }
-        return post;
-      })
-    );
+    }
   }
+
+//  async function handleAddComment(postId, commentText) {
+//     setPosts((prevPosts) =>
+//       prevPosts.map((post) =>
+//         post.id === postId
+//           ? {
+//               ...post,
+//               comments: [
+//                 ...(post.comments || []),
+//                 {
+//                   id: `c${nextCommentId.current++}`,
+//                   user: currentUser,
+//                   content: commentText,
+//                   timestamp: Date.now(),
+//                 },
+//               ],
+//             }
+//           : post
+//       )
+//     );
+//   }
+
+async function handleAddComment(postId,commentText) {
+    if (authToken && currentUser) {
+        try {
+          const response = await axios.post(
+            `http://localhost:5000/api/posts/${postId}/comments`,
+            { content: commentText },
+            {
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+              },
+            }
+          );
+          setPosts(prevPosts =>
+            prevPosts.map(post => (post._id === postId ? response.data : post))
+          );
+        } catch (error) {
+          console.error('Error adding comment:', error);
+        }
+      }
+}
 
   return (
     <div className="feed">
@@ -91,10 +159,11 @@ export default function Feed() {
 
       {posts.map((post) => (
         <Post
-          key={post.id}
+          key={post._id}
           post={post}
           onLike={handleLike}
-          isLiked={post.likedBy.includes(currentUser.id)}
+          isLiked={post.likes.includes(localStorage.getItem('userId'))} 
+          onAddComment={handleAddComment}
         />
       ))}
     </div>
